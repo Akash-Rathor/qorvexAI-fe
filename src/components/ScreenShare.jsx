@@ -51,7 +51,7 @@ export default function ScreenShare() {
         )}
       </div>
       {/* Chat box just below the video */}
-      <Chat />
+      {/* <Chat /> */}
     </div>
   );
 }

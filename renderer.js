@@ -64,21 +64,5 @@ container.addEventListener('mouseleave', () => {
   window.electronAPI.setClickable(false);
 });
 
-// Chat send logic
-const sendBtn = document.getElementById('send-btn');
-const chatInput = document.getElementById('chat-input');
-
-sendBtn.addEventListener('click', () => {
-  if (chatInput.value.trim()) {
-    console.log("Message sent:", chatInput.value);
-    chatInput.value = '';
-  }
-});
-
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    sendBtn.click();
-  }
-});
 
 start();
