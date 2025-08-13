@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ScreenShare from "./components/ScreenShare";
-import ChatWindow from "./components/ChatWindow";
+// import ChatWindow from "./components/ChatWindow";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
