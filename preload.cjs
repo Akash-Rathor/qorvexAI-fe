@@ -1,6 +1,6 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  getScreenStream: () => ipcRenderer.invoke("getScreenStream"),
-  setClickable: (state) => ipcRenderer.send("set-clickable", state),
+contextBridge.exposeInMainWorld('electronAPI', {
+  setClickable: (clickable) => ipcRenderer.send('set-clickable', clickable),
+  getScreenStream: () => ipcRenderer.invoke('getScreenStream')
 });

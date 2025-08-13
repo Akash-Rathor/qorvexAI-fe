@@ -81,6 +81,7 @@ export default function ScreenShare({ onSend, onStream }) {
         flexDirection: "column",
         alignItems: "center",
         zIndex: 9999,
+        pointerEvents: "auto", // ✅ ensures drag/click work
       }}
     >
       <div
@@ -108,7 +109,6 @@ export default function ScreenShare({ onSend, onStream }) {
         )}
       </div>
 
-      {/* Chat Input under video */}
       <div style={{ marginTop: 8, display: "flex", width: "100%" }}>
         <input
           type="text"
