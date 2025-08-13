@@ -28,5 +28,8 @@ ipcMain.handle("start-screen-stream", async () => {
   const sources = await desktopCapturer.getSources({ types: ["screen"] });
   return sources[0].id;
 });
+ipcMain.on("set-clickable", (event, clickable) => {
+  win.setIgnoreMouseEvents(!clickable, { forward: true });
+});
 
 app.whenReady().then(createWindow);

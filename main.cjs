@@ -1,9 +1,13 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, screen } = require('electron');
 const path = require('path');
 
+let win;
+
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const win = new BrowserWindow({
+  const isDev = !app.isPackaged;
+
+  win = new BrowserWindow({
     width,
     height,
     transparent: true,
@@ -18,29 +22,23 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index.html');
+  if (isDev) {
+    win.loadURL('http://localhost:5173');
+  } else {
+    win.loadFile('index.html');
+  }
 
-  // Make whole window click-through except interactive areas
+  // Default: whole app click-through
   win.setIgnoreMouseEvents(true, { forward: true });
 
-  ipcMain.on('set-clickable', (event, isClickable) => {
-    win.setIgnoreMouseEvents(!isClickable, { forward: true });
-  });
+ipcMain.on("set-clickable", (event, clickable) => {
+  win.setIgnoreMouseEvents(!clickable, { forward: true });
+});
 }
 
-// Screen stream request
 ipcMain.handle('getScreenStream', async () => {
   const sources = await desktopCapturer.getSources({ types: ['screen'] });
   return { id: sources[0].id };
 });
 
-app.whenReady().then(() => {
-  createWindow();
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+app.whenReady().then(createWindow);
