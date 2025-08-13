@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getScreenStream: () => ipcRenderer.invoke('getScreenStream'),
+  setClickable: (state) => ipcRenderer.send('set-clickable', state),
   setOverlayRegions: (elements) => {
     // Get bounding rects and send to main process as {x, y, width, height}
     const rects = elements.map(el => {

@@ -25,41 +25,60 @@ async function start() {
     video.onloadedmetadata = () => {
       video.play().catch(err => console.error("Video play error:", err));
     };
-
   } catch (err) {
     console.error("Error capturing screen:", err);
   }
 }
 
-// Drag and drop for preview
-const preview = document.getElementById('preview');
+// Dragging
+const container = document.getElementById('interactive-container');
 let isDragging = false, offsetX = 0, offsetY = 0;
 
-preview.addEventListener('mousedown', (e) => {
+container.addEventListener('mousedown', (e) => {
   isDragging = true;
-  offsetX = e.clientX - preview.offsetLeft;
-  offsetY = e.clientY - preview.offsetTop;
-  preview.style.cursor = 'grabbing';
+  const rect = container.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+  container.style.cursor = 'grabbing';
+  e.preventDefault();
 });
 
-document.addEventListener('mousemove', (e) => {
+window.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
-  preview.style.left = (e.clientX - offsetX) + 'px';
-  preview.style.top = (e.clientY - offsetY) + 'px';
-  preview.style.right = 'auto';
+  container.style.left = (e.clientX - offsetX) + 'px';
+  container.style.top = (e.clientY - offsetY) + 'px';
+  container.style.right = 'auto';
 });
 
-document.addEventListener('mouseup', () => {
+window.addEventListener('mouseup', () => {
   isDragging = false;
-  preview.style.cursor = 'grab';
+  container.style.cursor = 'default';
 });
 
-// Tell main process to ignore mouse events except preview & chat
-window.addEventListener('DOMContentLoaded', () => {
-  window.electronAPI?.setOverlayRegions?.([
-    preview,
-    document.getElementById('chat-btn')
-  ]);
+// Enable/disable click-through
+container.addEventListener('mouseenter', () => {
+  window.electronAPI.setClickable(true);
+});
+
+container.addEventListener('mouseleave', () => {
+  window.electronAPI.setClickable(false);
+});
+
+// Chat send logic
+const sendBtn = document.getElementById('send-btn');
+const chatInput = document.getElementById('chat-input');
+
+sendBtn.addEventListener('click', () => {
+  if (chatInput.value.trim()) {
+    console.log("Message sent:", chatInput.value);
+    chatInput.value = '';
+  }
+});
+
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    sendBtn.click();
+  }
 });
 
 start();

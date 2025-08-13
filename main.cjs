@@ -9,6 +9,8 @@ function createWindow() {
     transparent: true,
     frame: false,
     alwaysOnTop: true,
+    hasShadow: false,
+    resizable: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       nodeIntegration: false,
@@ -18,16 +20,22 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  // Listen for overlay region updates from renderer
-  ipcMain.on('set-overlay-regions', (event, rects) => {
-    win.setIgnoreMouseEvents(true, { forward: true });
-    win.setShape(rects);
+  // Make whole window click-through except interactive areas
+  win.setIgnoreMouseEvents(true, { forward: true });
+
+  ipcMain.on('set-clickable', (event, isClickable) => {
+    win.setIgnoreMouseEvents(!isClickable, { forward: true });
   });
 }
 
+// Screen stream request
+ipcMain.handle('getScreenStream', async () => {
+  const sources = await desktopCapturer.getSources({ types: ['screen'] });
+  return { id: sources[0].id };
+});
+
 app.whenReady().then(() => {
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -35,10 +43,4 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-// Handle screen capture request
-ipcMain.handle('getScreenStream', async () => {
-  const sources = await desktopCapturer.getSources({ types: ['screen'] });
-  return { id: sources[0].id };
 });

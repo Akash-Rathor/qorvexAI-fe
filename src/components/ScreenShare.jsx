@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import Chat from "./Chat";
 
 export default function ScreenShare() {
   const [isSharing, setIsSharing] = useState(false);
@@ -49,6 +50,8 @@ export default function ScreenShare() {
           <button onClick={stopShare}>Stop Screen Share</button>
         )}
       </div>
+      {/* Chat box just below the video */}
+      <Chat />
     </div>
   );
 }
