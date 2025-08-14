@@ -139,7 +139,7 @@ export default function ScreenShare({ onStream }) {
       const res = await fetch("http://localhost:8000/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, text: userMessage }),
+        body: JSON.stringify({ session_id: sessionId, prompt: userMessage }),
       });
       if (!res.body) throw new Error("No response body");
 
@@ -195,7 +195,7 @@ export default function ScreenShare({ onStream }) {
       style={{
         position: "fixed",
         top: 20,
-        left: 20,  // better than right:20 for resizing
+        right: 20,  // better than right:20 for resizing
         width: width,
         height: height, // dynamic height state
         maxWidth: "90vw",
