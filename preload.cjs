@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getWindowPosition: () => ipcRenderer.invoke('getWindowPosition'),
   getScreenWorkArea: () => ipcRenderer.invoke('getScreenWorkArea'),
   setWindowSize: (width, height) => ipcRenderer.send('setWindowSize', { width, height }),
-  setWindowPosition: (x, y) => ipcRenderer.send('setWindowPosition', { x, y }),
+  setWindowPosition: (x, y, width, height) => 
+    ipcRenderer.send('setWindowPosition', { x, y, width, height }),
   setResizable: (resizable) => ipcRenderer.send('setResizable', resizable)
 });

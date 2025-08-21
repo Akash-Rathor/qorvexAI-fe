@@ -70,20 +70,14 @@ ipcMain.on('setWindowSize', (event, { width, height }) => {
   }
 });
 
-ipcMain.on('setWindowPosition', (event, { x, y }) => {
-  try {
-    const { bounds } = screen.getPrimaryDisplay();
-    const bubbleSize = 56;
-
-    // Clamp inside screen bounds
-    const clampedX = Math.max(bounds.x, Math.min(x, bounds.x + bounds.width - bubbleSize));
-    const clampedY = Math.max(bounds.y, Math.min(y, bounds.y + bounds.height - bubbleSize));
-
-    win.setPosition(Math.round(clampedX), Math.round(clampedY));
-  } catch (err) {
-    console.error('Error setting window position:', err);
-  }
+ipcMain.handle('setWindowPosition', (event, { x, y, width = 60, height = 60 }) => {
+  const { bounds } = screen.getPrimaryDisplay();
+  const clampedX = Math.max(bounds.x, Math.min(x, bounds.x + bounds.width - width));
+  const clampedY = Math.max(bounds.y, Math.min(y, bounds.y + bounds.height - height));
+  win.setBounds({ x: clampedX, y: clampedY, width, height });
 });
+
+
 
 
 ipcMain.on('setResizable', (event, resizable) => {

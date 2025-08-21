@@ -196,17 +196,40 @@ export default function ScreenShare({ onStream }) {
       // }
 
 
-    const toggleWidgetSizeChange = () => {
-      setIsMinimized(prev=>!prev);
-    }
+const toggleWidgetSizeChange = useCallback(
+  debounce(async () => {
+    if (!window.electronAPI) return;
+
+    const { width: screenWidth, height: screenHeight } =
+      await window.electronAPI.getScreenWorkArea();
+
+    const [width, height] = await window.electronAPI.getWindowSize();
+    const [x, y] = await window.electronAPI.getWindowPosition();
+    setPrevSize({ width, height });
+    setPrevPos({ x, y });
+
+    const bubbleWidth = 60;
+    const bubbleHeight = 60;
+    const xPos = screenWidth - bubbleWidth - 20;
+    const yPos = screenHeight - bubbleHeight - 20;
+
+    // Await so window actually moves before React updates
+    await window.electronAPI.setWindowBounds(xPos, yPos, bubbleWidth, bubbleHeight);
+
+    setIsMinimized(true); // Now visually minimized
+  }, 100),
+  [prevSize, prevPos]
+);
+
 
 
 
   const handleUnminimize = useCallback(
+
     debounce(async () => {
       if (!window.electronAPI) return;
       window.electronAPI.setWindowSize(prevSize?.width || 360, prevSize?.height || 420);
-      window.electronAPI.setWindowPosition(prevPos?.x || 20, prevPos?.y || 20);
+      window.electronAPI.setWindowPosition(prevPos?.x || 20, prevPos?.y || 20, prevSize?.width || 360, prevSize?.height || 420);
       window.electronAPI.setResizable(true);
       setIsMinimized(false);
     }, 100),
@@ -233,13 +256,13 @@ export default function ScreenShare({ onStream }) {
         className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-3 py-2 text-white text-sm font-semibold"
       >
         <span>Qorvex AI</span>
-        <button
+        {/* <button
           onClick={toggleWidgetSizeChange}
           style={{ WebkitAppRegion: "no-drag" }}
-          className="p-1 rounded hover:bg-black/20 transition-colors"
+          className="p-1 rounded transition-colors"
         >
           <Minimize2 size={16} />
-        </button>
+        </button> */}
       </div>
 
       {/* Video */}
