@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { Minimize2, MessageSquare } from "lucide-react";
 
 export default function ScreenShare({ onStream }) {
   const containerRef = useRef(null);
@@ -7,21 +8,21 @@ export default function ScreenShare({ onStream }) {
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeDir, setResizeDir] = useState(""); // 'width', 'height', 'both'
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [width, setWidth] = useState(320);
-  const [height, setHeight] = useState(300);
+  const [width, setWidth] = useState(360);
+  const [height, setHeight] = useState(420);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState(uuidv4());
+  const [isMinimized, setIsMinimized] = useState(false);
+
   const wsRef = useRef(null);
   const captureIntervalRef = useRef(null);
 
-  // Screen share + frame WebSocket
+  // --- Screen share + frame WebSocket ---
   useEffect(() => {
+    if (isMinimized) return;
+
     const start = async () => {
       try {
         if (!window.electronAPI?.getScreenStream) {
@@ -51,20 +52,28 @@ export default function ScreenShare({ onStream }) {
         if (videoRef.current) videoRef.current.srcObject = stream;
         if (onStream) onStream(stream);
 
-        // WebSocket for sending frames
-        wsRef.current = new WebSocket(`ws://localhost:8000/stream_frame/${sessionId}`);
+        wsRef.current = new WebSocket(
+          `ws://localhost:8000/stream_frame/${sessionId}`
+        );
         wsRef.current.binaryType = "arraybuffer";
 
         captureIntervalRef.current = setInterval(() => {
           if (!videoRef.current || !wsRef.current || wsRef.current.readyState !== 1) return;
+
           const canvas = document.createElement("canvas");
-          canvas.width = 640;
-          canvas.height = 360;
+          canvas.width = 480;
+          canvas.height = 270;
+
           const ctx = canvas.getContext("2d");
           ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => {
-            if (blob) blob.arrayBuffer().then((buf) => wsRef.current.send(buf));
-          }, "image/jpeg", 0.7);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) blob.arrayBuffer().then((buf) => wsRef.current.send(buf));
+            },
+            "image/webp", // ✅ always WebP
+            0.5 // ✅ compressed quality
+          );
         }, 500);
       } catch (err) {
         console.error(err);
@@ -77,58 +86,9 @@ export default function ScreenShare({ onStream }) {
       clearInterval(captureIntervalRef.current);
       wsRef.current?.close();
     };
-  }, [sessionId]);
+  }, [sessionId, isMinimized]);
 
-  // Drag & resize handlers
-  const onMouseMove = (e) => {
-    if (isDragging) {
-      containerRef.current.style.left = `${e.clientX - offset.x}px`;
-      containerRef.current.style.top = `${e.clientY - offset.y}px`;
-    }
-    if (isResizing) {
-      if (resizeDir === "width" || resizeDir === "both") {
-        const rect = containerRef.current.getBoundingClientRect();
-        const newWidth = e.clientX - rect.left;
-        setWidth(Math.max(200, Math.min(newWidth, 800)));
-      }
-      if (resizeDir === "height" || resizeDir === "both") {
-        const rect = containerRef.current.getBoundingClientRect();
-        const newHeight = e.clientY - rect.top;
-        setHeight(Math.max(150, Math.min(newHeight, 600)));
-      }
-    }
-  };
-
-  const stopDragResize = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    setResizeDir("");
-  };
-
-  useEffect(() => {
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", stopDragResize);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", stopDragResize);
-    };
-  }, [isDragging, isResizing, offset, resizeDir]);
-
-  // Auto-grow textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.style.height = "auto";
-      ta.style.height = Math.min(ta.scrollHeight, 150) + "px";
-    }
-  }, [input]);
-
-  // Auto-scroll messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Message sending (streaming response)
+  // --- Chat send ---
   const handleSend = async () => {
     if (!input.trim()) return;
     const userMessage = input.trim();
@@ -170,7 +130,6 @@ export default function ScreenShare({ onStream }) {
     }
   };
 
-  // New chat
   const setNewChat = async () => {
     try {
       await fetch("http://localhost:8000/clear_session", {
@@ -187,76 +146,69 @@ export default function ScreenShare({ onStream }) {
     setInput("");
   };
 
+  // --- Minimized bubble ---
+  if (isMinimized) {
+    return (
+      <div
+        onClick={() => setIsMinimized(false)}
+        style={{ pointerEvents: "auto" }} // ✅ ensures clickable
+        className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer shadow-xl transition-all"
+      >
+        <MessageSquare size={24} />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => window.electronAPI?.setClickable(true)}
-      onMouseLeave={() => window.electronAPI?.setClickable(false)}
       style={{
         position: "fixed",
         top: 20,
-        right: 20,  // better than right:20 for resizing
-        width: width,
-        height: height, // dynamic height state
-        maxWidth: "90vw",
-        maxHeight: "90vh",
+        right: 20,
+        width,
+        height,
         zIndex: 9999,
-        pointerEvents: "auto",
-        display: "flex",
-        flexDirection: "column",
-        background: "#1a1a1a",
-        borderRadius: "8px",
-        overflow: "hidden",
-        boxSizing: "border-box",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+        pointerEvents:"auto"
       }}
+      className="rounded-xl shadow-2xl overflow-hidden flex flex-col border border-gray-700 bg-[#121212]"
     >
-      {/* Video */}
-        <div
-          onMouseDown={(e) => {
-            const rect = containerRef.current.getBoundingClientRect();
-            setOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-            setIsDragging(true);
-          }}
-          style={{
-            width: "100%",
-            height: "50%", // half of container height
-            background: "#000",
-            cursor: "grab",
-            objectFit: "cover",
-          }}
+      {/* Header */}
+      <div className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-3 py-2 text-white text-sm font-semibold cursor-default">
+        <span>Qorvex AI</span>
+        <button
+          onClick={() => setIsMinimized(true)}
+          className="p-1 rounded hover:bg-black/20 transition-colors"
+          style={{ pointerEvents: "auto" }} // ✅ ensures clickable
         >
+          <Minimize2 size={16} />
+        </button>
+      </div>
+
+      {/* Video */}
+      <div className="flex-1 bg-black">
         {error ? (
-          <div className="text-red-600 p-2">{error}</div>
+          <div className="text-red-500 p-2 text-sm">{error}</div>
         ) : (
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover rounded-b-md"
+          />
         )}
       </div>
 
       {/* Chat */}
-      <div className="flex flex-col w-full h-1/2 bg-gray-900 p-1 rounded-b-lg shadow-md"
-          style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "#111",
-          padding: "8px",
-          overflow: "hidden",
-        }}
-        >
-        <div className="flex flex-col gap-1 overflow-y-auto mb-2 max-h-full">
+      <div className="flex flex-col bg-gray-900 p-3 overflow-hidden" style={{ height: "45%" }}>
+        <div className="flex flex-col gap-2 overflow-y-auto mb-2 flex-1 pr-1">
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`px-2 py-1 rounded-b-lg ${
+              className={`px-3 py-2 rounded-lg max-w-[75%] text-sm shadow ${
                 msg.from === "user"
-                  ? "bg-blue-700 text-white self-end"
+                  ? "bg-blue-600 text-white self-end"
                   : "bg-gray-700 text-white self-start"
               }`}
             >
@@ -277,59 +229,25 @@ export default function ScreenShare({ onStream }) {
               handleSend();
             }
           }}
-          className="w-full px-3 py-2 border border-gray-700 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none overflow-hidden"
+          className="w-full px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
+          style={{ minHeight: "44px", maxHeight: "80px" }}
         />
 
         <div className="flex justify-between mt-2 gap-2">
           <button
             onClick={setNewChat}
-            className="flex-1 bg-red-700 hover:bg-gray-800 text-white font-medium rounded-md transition-all duration-200 text-xs flex justify-center items-center"
+            className="flex-1 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg py-1 text-xs transition-all"
           >
             New Chat
           </button>
           <button
             onClick={handleSend}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-all duration-200 text-xs flex justify-center items-center"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-1 text-xs transition-all"
           >
             Send
           </button>
         </div>
       </div>
-
-      {/* Resize handles */}
-      <div
-        onMouseDown={() => {
-          setIsResizing(true);
-          setResizeDir("width");
-        }}
-        style={{
-          position: "absolute",
-          width: "16px",
-          height: "16px",
-          bottom: 0,
-          right: 0,
-          cursor: "nwse-resize",
-          background: "transparent",
-        }}
-        className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-gray-500"
-        title="Drag to resize width"
-      />
-      <div
-        onMouseDown={() => {
-          setIsResizing(true);
-          setResizeDir("height");
-        }}
-        className="absolute bottom-0 left-0 w-full h-2 cursor-ns-resize bg-gray-500"
-        title="Drag to resize height"
-      />
-      <div
-        onMouseDown={() => {
-          setIsResizing(true);
-          setResizeDir("both");
-        }}
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize bg-gray-500"
-        title="Drag to resize both"
-      />
     </div>
   );
 }
