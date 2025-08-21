@@ -23,21 +23,21 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    backgroundColor: '#00000000', // Fully transparent background
+    backgroundColor: '#00000000',
   });
 
   // Optimize rendering
   win.setBackgroundThrottling(false);
-  win.webContents.setFrameRate(30); // Reduced to 30fps to minimize rendering load
-  win.setMinimumSize(200, 200); // Prevent resizing to 0
+  win.webContents.setFrameRate(30);
+  win.setMinimumSize(200, 200);
 
   if (isDev) {
     win.loadURL('http://localhost:5173');
-    // win.webContents.openDevTools(); // Uncomment for debugging
   } else {
     win.loadFile(path.join(process.cwd(), 'dist', 'index.html'));
   }
 }
+
 
 // Provide screen sources to renderer
 ipcMain.handle('getScreenStream', async () => {
@@ -72,15 +72,19 @@ ipcMain.on('setWindowSize', (event, { width, height }) => {
 
 ipcMain.on('setWindowPosition', (event, { x, y }) => {
   try {
-    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-    // Clamp position to stay within screen bounds
-    const clampedX = Math.max(0, Math.min(x, screenWidth - 56)); // 56 is bubble size
-    const clampedY = Math.max(0, Math.min(y, screenHeight - 56));
+    const { bounds } = screen.getPrimaryDisplay();
+    const bubbleSize = 56;
+
+    // Clamp inside screen bounds
+    const clampedX = Math.max(bounds.x, Math.min(x, bounds.x + bounds.width - bubbleSize));
+    const clampedY = Math.max(bounds.y, Math.min(y, bounds.y + bounds.height - bubbleSize));
+
     win.setPosition(Math.round(clampedX), Math.round(clampedY));
   } catch (err) {
     console.error('Error setting window position:', err);
   }
 });
+
 
 ipcMain.on('setResizable', (event, resizable) => {
   try {

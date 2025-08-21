@@ -72,3 +72,16 @@ body {
   padding: 0;
   overflow: hidden;
 }
+
+
+.minimized-bubble {
+  position: fixed; /* relative to viewport */
+  bottom: 16px;
+  right: 16px;
+  background-color: #2563eb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 9999; /* stay on top */
+}

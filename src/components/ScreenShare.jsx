@@ -164,27 +164,43 @@ export default function ScreenShare({ onStream }) {
     setInput("");
   }, [sessionId]);
 
-  const handleMinimize = useCallback(
-    debounce(async () => {
-      if (!window.electronAPI) return;
-      const size = await window.electronAPI.getWindowSize();
-      const pos = await window.electronAPI.getWindowPosition();
-      setPrevSize({ width: size[0], height: size[1] });
-      setPrevPos({ x: pos[0], y: pos[1] });
+      // function handleMinimize(mainWindow, bubbleWindow) {
+      //   const { screen } = require("electron");
 
-      const workArea = await window.electronAPI.getScreenWorkArea();
-      const bubbleSize = 56;
-      // Ensure bubble stays on-screen
-      const x = Math.min(workArea.width - bubbleSize - 20, Math.max(20, workArea.width - bubbleSize - 20));
-      const y = Math.min(workArea.height - bubbleSize - 20, Math.max(20, workArea.height - bubbleSize - 20));
-      window.electronAPI.setWindowSize(bubbleSize, bubbleSize);
-      window.electronAPI.setWindowPosition(x, y);
-      window.electronAPI.setResizable(false);
+      //   mainWindow.hide();
 
-      setIsMinimized(true);
-    }, 100),
-    []
-  );
+      //   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+
+      //   if (!bubbleWindow) {
+      //     bubbleWindow = createBubbleWindow();
+      //   }
+
+      //   const bubbleBounds = bubbleWindow.getBounds();
+      //   const bubbleWidth = bubbleBounds.width || 60;  // fallback if window has no size yet
+      //   const bubbleHeight = bubbleBounds.height || 60;
+
+      //   // Clamp X and Y so the bubble never goes outside the screen
+      //   const x = Math.max(0, screenWidth - bubbleWidth - 20);
+      //   const y = Math.max(0, screenHeight - bubbleHeight - 20);
+
+      //   bubbleWindow.setBounds({
+      //     x,
+      //     y,
+      //     width: bubbleWidth,
+      //     height: bubbleHeight,
+      //   });
+
+      //   bubbleWindow.showInactive(); // show but don’t steal focus
+
+      //   return bubbleWindow;
+      // }
+
+
+    const toggleWidgetSizeChange = () => {
+      setIsMinimized(prev=>!prev);
+    }
+
+
 
   const handleUnminimize = useCallback(
     debounce(async () => {
@@ -197,21 +213,12 @@ export default function ScreenShare({ onStream }) {
     [prevSize, prevPos]
   );
 
-  // --- Minimized bubble ---
-  if (isMinimized) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-transparent">
-        <div
-          onClick={handleUnminimize}
-          className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer shadow-xl transition-all"
-        >
-          <MessageSquare size={24} />
-        </div>
-      </div>
-    );
-  }
-
   return (
+    isMinimized ? 
+    <button className="minimized-bubble" onClick={handleUnminimize} style={{ backgroundColor: "transparent" , WebkitAppRegion: "drag", cursor: "move"}}>
+          <img src="/qorvex_ai_icon.png" alt="Qorvex AI Icon" style={{ width: "42px", height: "40px" , borderRadius:"50%"}}/>
+    </button>
+        :
     <div
       style={{
         width: "100%",
@@ -227,7 +234,7 @@ export default function ScreenShare({ onStream }) {
       >
         <span>Qorvex AI</span>
         <button
-          onClick={handleMinimize}
+          onClick={toggleWidgetSizeChange}
           style={{ WebkitAppRegion: "no-drag" }}
           className="p-1 rounded hover:bg-black/20 transition-colors"
         >
@@ -252,53 +259,57 @@ export default function ScreenShare({ onStream }) {
       </div>
 
       {/* Chat */}
-      <div className="flex flex-col bg-gray-900 p-3 overflow-hidden" style={{ height: "45%" }}>
-        <div className="flex flex-col gap-2 overflow-y-auto mb-2 flex-1 pr-1">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`px-3 py-2 rounded-lg max-w-[75%] text-sm shadow ${
-                msg.from === "user"
-                  ? "bg-blue-600 text-white self-end"
-                  : "bg-gray-700 text-white self-start"
-              }`}
-            >
-              {msg.text}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          className="w-full px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
-          style={{ minHeight: "44px", maxHeight: "80px" }}
-        />
-
-        <div className="flex justify-between mt-2 gap-2">
-          <button
-            onClick={setNewChat}
-            className="flex-1 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg py-1 text-xs transition-all"
-          >
-            New Chat
-          </button>
-          <button
-            onClick={handleSend}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-1 text-xs transition-all"
-          >
-            Send
-          </button>
-        </div>
+<div className="flex flex-col bg-gray-900 p-3 overflow-hidden" style={{ height: "45%" }}>
+  {/* Messages list */}
+  <div className="flex-1 overflow-y-auto pr-1 mb-2 flex flex-col gap-2">
+    {messages.map((msg, idx) => (
+      <div
+        key={idx}
+        className={`px-3 py-2 rounded-lg max-w-[75%] text-sm shadow ${
+          msg.from === "user"
+            ? "bg-blue-600 text-white self-end"
+            : "bg-gray-700 text-white self-start"
+        }`}
+      >
+        {msg.text}
       </div>
+    ))}
+    <div ref={messagesEndRef} />
+  </div>
+
+  {/* Input box */}
+  <textarea
+    ref={textareaRef}
+    value={input}
+    onChange={(e) => setInput(e.target.value)}
+    placeholder="Type a message..."
+    onKeyDown={(e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    }}
+    className="w-full px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm flex-shrink-0"
+    style={{ minHeight: "44px", maxHeight: "80px" }}
+  />
+
+  {/* Buttons */}
+  <div className="flex justify-between mt-2 gap-2 flex-shrink-0">
+    <button
+      onClick={setNewChat}
+      className="flex-1 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg py-1 text-xs transition-all"
+    >
+      New Chat
+    </button>
+    <button
+      onClick={handleSend}
+      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-1 text-xs transition-all"
+    >
+      Send
+    </button>
+  </div>
+</div>
+
     </div>
   );
 }
