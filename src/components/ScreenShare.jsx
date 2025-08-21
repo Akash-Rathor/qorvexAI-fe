@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { Minimize2, MessageSquare } from "lucide-react";
+import { Minimize, MessageSquare } from "lucide-react";
 
 export default function ScreenShare({ onStream }) {
   const videoRef = useRef(null);
@@ -81,8 +81,8 @@ export default function ScreenShare({ onStream }) {
             (blob) => {
               if (blob) blob.arrayBuffer().then((buf) => wsRef.current.send(buf));
             },
-            "image/webp",
-            0.5
+            "image/jpeg",
+            0.7
           );
         }, 1000); // Increased interval to reduce load
       } catch (err) {
@@ -112,7 +112,14 @@ export default function ScreenShare({ onStream }) {
     const userMessage = input.trim();
     setMessages((prev) => [...prev, { text: userMessage, from: "user" }]);
     setInput("");
-
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: "smooth",
+          block: "end"
+        });
+      }
+    }, 50);
     try {
       const res = await fetch("http://localhost:8000/generate", {
         method: "POST",
@@ -164,38 +171,50 @@ export default function ScreenShare({ onStream }) {
     setInput("");
   }, [sessionId]);
 
-      // function handleMinimize(mainWindow, bubbleWindow) {
-      //   const { screen } = require("electron");
+      function handleMinimize(mainWindow, bubbleWindow) {
+        const { screen } = require("electron");
 
-      //   mainWindow.hide();
+        mainWindow.hide();
 
-      //   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+        const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
 
-      //   if (!bubbleWindow) {
-      //     bubbleWindow = createBubbleWindow();
-      //   }
+        if (!bubbleWindow) {
+          bubbleWindow = createBubbleWindow();
+        }
 
-      //   const bubbleBounds = bubbleWindow.getBounds();
-      //   const bubbleWidth = bubbleBounds.width || 60;  // fallback if window has no size yet
-      //   const bubbleHeight = bubbleBounds.height || 60;
+        const bubbleBounds = bubbleWindow.getBounds();
+        const bubbleWidth = bubbleBounds.width || 60;  // fallback if window has no size yet
+        const bubbleHeight = bubbleBounds.height || 60;
 
-      //   // Clamp X and Y so the bubble never goes outside the screen
-      //   const x = Math.max(0, screenWidth - bubbleWidth - 20);
-      //   const y = Math.max(0, screenHeight - bubbleHeight - 20);
+        // Clamp X and Y so the bubble never goes outside the screen
+        const x = Math.max(0, screenWidth - bubbleWidth - 20);
+        const y = Math.max(0, screenHeight - bubbleHeight - 20);
 
-      //   bubbleWindow.setBounds({
-      //     x,
-      //     y,
-      //     width: bubbleWidth,
-      //     height: bubbleHeight,
-      //   });
+        bubbleWindow.setBounds({
+          x,
+          y,
+          width: bubbleWidth,
+          height: bubbleHeight,
+        });
 
-      //   bubbleWindow.showInactive(); // show but don’t steal focus
+        bubbleWindow.showInactive(); // show but don’t steal focus
 
-      //   return bubbleWindow;
-      // }
+        return bubbleWindow;
+      }
 
 
+
+  const handleUnminimize = useCallback(
+
+    debounce(async () => {
+      if (!window.electronAPI) return;
+      window.electronAPI.setWindowSize(prevSize?.width || 360, prevSize?.height || 420);
+      window.electronAPI.setWindowPosition(prevPos?.x || 20, prevPos?.y || 20, prevSize?.width || 360, prevSize?.height || 420);
+      window.electronAPI.setResizable(true);
+      setIsMinimized(false);
+    }, 100),
+    [prevSize, prevPos]
+  );
 const toggleWidgetSizeChange = useCallback(
   debounce(async () => {
     if (!window.electronAPI) return;
@@ -213,152 +232,158 @@ const toggleWidgetSizeChange = useCallback(
     const xPos = screenWidth - bubbleWidth - 20;
     const yPos = screenHeight - bubbleHeight - 20;
 
-    // Await so window actually moves before React updates
     await window.electronAPI.setWindowBounds(xPos, yPos, bubbleWidth, bubbleHeight);
-
-    setIsMinimized(true); // Now visually minimized
+    setIsMinimized(true);
   }, 100),
   [prevSize, prevPos]
 );
 
-
-
-
-  const handleUnminimize = useCallback(
-
-    debounce(async () => {
-      if (!window.electronAPI) return;
-      window.electronAPI.setWindowSize(prevSize?.width || 360, prevSize?.height || 420);
-      window.electronAPI.setWindowPosition(prevPos?.x || 20, prevPos?.y || 20, prevSize?.width || 360, prevSize?.height || 420);
-      window.electronAPI.setResizable(true);
-      setIsMinimized(false);
-    }, 100),
-    [prevSize, prevPos]
-  );
-
-  return (
-    isMinimized ? 
-    <button className="minimized-bubble" onClick={handleUnminimize} style={{ backgroundColor: "transparent" , WebkitAppRegion: "drag", cursor: "move"}}>
-          <img src="/qorvex_ai_icon.png" alt="Qorvex AI Icon" style={{ width: "42px", height: "40px" , borderRadius:"50%"}}/>
-    </button>
-        :
-    <div
-  style={{
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-  }}
-  className="rounded-xl shadow-2xl flex flex-col border border-gray-700 bg-[#121212]"
->
-  {/* Header */}
+return (
+  isMinimized ? 
+  <button className="minimized-bubble" onClick={handleUnminimize} style={{ backgroundColor: "transparent" , WebkitAppRegion: "drag", cursor: "move"}}>
+    <img src="/qorvex_ai_icon.png" alt="Qorvex AI Icon" style={{ width: "42px", height: "40px" , borderRadius:"50%"}}/>
+  </button>
+  :
   <div
-    style={{ WebkitAppRegion: "drag", cursor: "move" }}
-    className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-2 py-1 text-white font-semibold flex-shrink-0 text-xs"
-  >
-    <span className="">QorvexAI</span>
-  </div>
-
-  {/* Video */}
-  <div className="flex-1 bg-black min-h-0">
-    {error ? (
-      <div className="text-red-500 p-2 text-xs">{error}</div>
-    ) : (
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        className="w-full h-full object-cover"
-        style={{ display: "block" }}
-      />
-    )}
-  </div>
-
-  <div 
-    className="flex flex-col bg-gray-900 flex-shrink-0" 
-    style={{ 
-      height: "45%",
-      minHeight: "120px",
-      maxHeight: "250px",
-      padding: "8px 0"
+    style={{
+      width: "100%",
+      height: "78vh", // Fixed viewport height
+      overflow: "hidden", // Prevent scrolling
+      display: "flex",
+      flexDirection: "column"
     }}
+    className="rounded-xl shadow-2xl border border-gray-700 bg-[#121212]"
   >
-    {/* Messages list - Add horizontal padding only to this section */}
-    <div 
-      className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-0 mb-2 max-h-[75%] "
-      style={{ padding: "0 8px 0 6px" }}
+    {/* Header - Fixed height */}
+    <div
+      style={{ WebkitAppRegion: "drag", cursor: "move" }}
+      className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-2 py-1 text-white font-semibold flex-shrink-0 text-xs"
     >
-      {messages.map((msg, idx) => (
-        <div
-          key={idx}
-          className={`px-2 py-1 rounded-lg  text-xs shadow ${
-            msg.from === "user"
-              ? "bg-blue-600 text-white self-end"
-              : "bg-gray-700 text-white self-start"
-          }`}
-          style={{ lineHeight: "1.3" }}
-        >
-          {msg.text}
-        </div>
-      ))}
-      <div ref={messagesEndRef} />
+      <span className="text-md">QorvexAI</span>
+      <span 
+        onClick={() => toggleWidgetSizeChange()}
+        className="bg-black rounded-full hover:ring-1 hover:ring-blue-500 flex justify-center items-center p-1 cursor-pointer transition-all duration-200"
+      >
+        <Minimize size={12} color="white"/>
+      </span>
     </div>
 
-    {/* Input and buttons - Add horizontal padding here */}
+    {/* Video - Fixed height */}
     <div 
-      className="flex-shrink-0 flex justify-evenly items-center rounded-lg gap-2"
-      style={{ padding: "0 8px" }} // Only horizontal padding
+      className="bg-black flex-shrink-0"
+      style={{ height: "30%" }}
     >
-      {/* Input box - No additional padding/margin */}
-      <textarea
-        ref={textareaRef}
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type a message..."
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-          }
-        }}
-        className="w-full border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-xs"
-        style={{ 
-          minHeight: "28px",
-          maxHeight: "60px",
-          padding: "6px 8px",
-          margin: "0",
-          boxSizing: "border-box"
-        }}
-      />
+      {error ? (
+        <div className="text-red-500 p-2 text-xs">{error}</div>
+      ) : (
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      )}
+    </div>
 
-      {/* Buttons - No additional padding/margin */}
+    {/* Chat Container - Fixed height */}
+    <div 
+      className="flex flex-col bg-gray-900"
+      style={{ 
+        minHeight: "200px",
+        maxHeight: "30%",
+        overflow: "hidden" // Prevent container overflow
+      }}
+    >
+      {/* Messages - Scrollable area */}
       <div 
-        className="flex gap-2"
+        className="overflow-y-auto flex flex-col gap-2"
+        style={{ 
+          padding: "8px 8px 0 6px",
+          height: "calc(100% - 60px)", // Reserve exactly 60px for input
+          scrollBehavior: "smooth"
+        }}
       >
-        <button
-          onClick={setNewChat}
-          className="flex-1 bg-red-700 ring-red-700 hover:bg-red-800 text-white font-black rounded transition-all justify-center flex items-center"
-          style={{ 
-          minWidth: "0",
-          fontSize: "12px",
-          backgroundColor: "#e63946",
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`px-2 py-1 rounded-lg text-xs shadow flex-shrink-0 ${
+              msg.from === "user"
+                ? "bg-blue-600 text-white self-end"
+                : "bg-gray-700 text-white self-start"
+            }`}
+            style={{ 
+              lineHeight: "1.3",
+              maxWidth: "85%",
+              wordWrap: "break-word"
+            }}
+          >
+            {msg.text}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area - Fixed at bottom */}
+      <div 
+        className="bg-gray-900 border-t border-gray-700 flex-shrink-0"
+        style={{ 
+          height: "60px", // Fixed height
+          padding: "8px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px"
+        }}
+      >
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
           }}
-        >
-          New Chat
-        </button>
-        <button
-          onClick={handleSend}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black rounded transition-all justify-center flex items-center"
+          className="border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-xs"
           style={{ 
-            minWidth: "0",
-            fontSize: "14px",
-            backgroundColor: "black",
+            flex: "1",
+            height: "32px", // Fixed height
+            padding: "6px 8px",
+            boxSizing: "border-box",
+            overflow: "hidden" // Prevent expansion
           }}
-        >
-          Send
-        </button>
+        />
+
+        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+          <button
+            onClick={setNewChat}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold rounded transition-all text-xs"
+            style={{ 
+              width: "60px",
+              height: "32px",
+              fontSize: "10px",
+              backgroundColor: "#e63946",
+              whiteSpace: "nowrap"
+            }}
+          >
+            New
+          </button>
+          <button
+            onClick={handleSend}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-all text-xs"
+            style={{ 
+              width: "50px",
+              height: "32px",
+              fontSize: "11px",
+              backgroundColor: "black"
+            }}
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-  )};
+)};

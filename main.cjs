@@ -20,7 +20,7 @@ function createWindow() {
     resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
     },
     backgroundColor: '#00000000',
@@ -29,7 +29,7 @@ function createWindow() {
   // Optimize rendering
   win.setBackgroundThrottling(false);
   win.webContents.setFrameRate(30);
-  win.setMinimumSize(200, 200);
+  win.setMinimumSize(360, 420);
 
   if (isDev) {
     win.loadURL('http://localhost:5173');
