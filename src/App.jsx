@@ -1,23 +1,23 @@
-import React, { useState } from "react";
+// src/App.jsx
+import React, { useState, useCallback } from "react";
 import ScreenShare from "./components/ScreenShare";
-// import ChatWindow from "./components/ChatWindow";
 
 export default function App() {
   const [messages, setMessages] = useState([]);
   const [videoStream, setVideoStream] = useState(null);
 
-  const handleStream = (stream) => {
+  const handleStream = useCallback((stream) => {
     setVideoStream(stream);
-  };
+  }, []);
 
-  const handleSend = (msg) => {
+  const handleSend = useCallback((msg) => {
     if (msg.trim()) {
       setMessages((prev) => [...prev, { from: "me", text: msg }]);
     }
-  };
+  }, []);
 
   return (
-    <div style={{ pointerEvents: "none" }}> {/* This lets clicks pass through */}
+    <div className="w-full h-full">
       <ScreenShare onSend={handleSend} onStream={handleStream} />
     </div>
   );

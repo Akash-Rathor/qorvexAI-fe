@@ -1,27 +1,36 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { Minimize2, MessageSquare } from "lucide-react";
 
 export default function ScreenShare({ onStream }) {
-  const containerRef = useRef(null);
   const videoRef = useRef(null);
   const textareaRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const streamRef = useRef(null); // Store stream to prevent premature cleanup
 
-  const [width, setWidth] = useState(360);
-  const [height, setHeight] = useState(420);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState(uuidv4());
   const [isMinimized, setIsMinimized] = useState(false);
+  const [prevSize, setPrevSize] = useState({ width: 360, height: 420 });
+  const [prevPos, setPrevPos] = useState({ x: 20, y: 20 });
 
   const wsRef = useRef(null);
   const captureIntervalRef = useRef(null);
 
+  // Debounce function to limit rapid window updates
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
   // --- Screen share + frame WebSocket ---
   useEffect(() => {
-    if (isMinimized) return;
+    if (isMinimized || streamRef.current) return; // Prevent re-running if stream exists
 
     const start = async () => {
       try {
@@ -49,6 +58,7 @@ export default function ScreenShare({ onStream }) {
           },
         });
 
+        streamRef.current = stream; // Store stream
         if (videoRef.current) videoRef.current.srcObject = stream;
         if (onStream) onStream(stream);
 
@@ -71,10 +81,10 @@ export default function ScreenShare({ onStream }) {
             (blob) => {
               if (blob) blob.arrayBuffer().then((buf) => wsRef.current.send(buf));
             },
-            "image/webp", // ✅ always WebP
-            0.5 // ✅ compressed quality
+            "image/webp",
+            0.5
           );
-        }, 500);
+        }, 1000); // Increased interval to reduce load
       } catch (err) {
         console.error(err);
         setError("Error capturing screen: " + err.message);
@@ -84,12 +94,20 @@ export default function ScreenShare({ onStream }) {
 
     return () => {
       clearInterval(captureIntervalRef.current);
-      wsRef.current?.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        if (videoRef.current) videoRef.current.srcObject = null;
+      }
     };
-  }, [sessionId, isMinimized]);
+  }, [sessionId, isMinimized, onStream]);
 
   // --- Chat send ---
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     const userMessage = input.trim();
     setMessages((prev) => [...prev, { text: userMessage, from: "user" }]);
@@ -128,9 +146,9 @@ export default function ScreenShare({ onStream }) {
       console.error(err);
       setMessages((prev) => [...prev, { text: "Error sending message", from: "bot" }]);
     }
-  };
+  }, [input, sessionId]);
 
-  const setNewChat = async () => {
+  const setNewChat = useCallback(async () => {
     try {
       await fetch("http://localhost:8000/clear_session", {
         method: "POST",
@@ -144,42 +162,74 @@ export default function ScreenShare({ onStream }) {
     setSessionId(newSessionId);
     setMessages([]);
     setInput("");
-  };
+  }, [sessionId]);
+
+  const handleMinimize = useCallback(
+    debounce(async () => {
+      if (!window.electronAPI) return;
+      const size = await window.electronAPI.getWindowSize();
+      const pos = await window.electronAPI.getWindowPosition();
+      setPrevSize({ width: size[0], height: size[1] });
+      setPrevPos({ x: pos[0], y: pos[1] });
+
+      const workArea = await window.electronAPI.getScreenWorkArea();
+      const bubbleSize = 56;
+      // Ensure bubble stays on-screen
+      const x = Math.min(workArea.width - bubbleSize - 20, Math.max(20, workArea.width - bubbleSize - 20));
+      const y = Math.min(workArea.height - bubbleSize - 20, Math.max(20, workArea.height - bubbleSize - 20));
+      window.electronAPI.setWindowSize(bubbleSize, bubbleSize);
+      window.electronAPI.setWindowPosition(x, y);
+      window.electronAPI.setResizable(false);
+
+      setIsMinimized(true);
+    }, 100),
+    []
+  );
+
+  const handleUnminimize = useCallback(
+    debounce(async () => {
+      if (!window.electronAPI) return;
+      window.electronAPI.setWindowSize(prevSize?.width || 360, prevSize?.height || 420);
+      window.electronAPI.setWindowPosition(prevPos?.x || 20, prevPos?.y || 20);
+      window.electronAPI.setResizable(true);
+      setIsMinimized(false);
+    }, 100),
+    [prevSize, prevPos]
+  );
 
   // --- Minimized bubble ---
   if (isMinimized) {
     return (
-      <div
-        onClick={() => setIsMinimized(false)}
-        style={{ pointerEvents: "auto" }} // ✅ ensures clickable
-        className="fixed bottom-4 right-4 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer shadow-xl transition-all"
-      >
-        <MessageSquare size={24} />
+      <div className="w-full h-full flex items-center justify-center bg-transparent">
+        <div
+          onClick={handleUnminimize}
+          className="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer shadow-xl transition-all"
+        >
+          <MessageSquare size={24} />
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      ref={containerRef}
       style={{
-        position: "fixed",
-        top: 20,
-        right: 20,
-        width,
-        height,
-        zIndex: 9999,
-        pointerEvents:"auto"
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
       }}
-      className="rounded-xl shadow-2xl overflow-hidden flex flex-col border border-gray-700 bg-[#121212]"
+      className="rounded-xl shadow-2xl flex flex-col border border-gray-700 bg-[#121212]"
     >
       {/* Header */}
-      <div className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-3 py-2 text-white text-sm font-semibold cursor-default">
+      <div
+        style={{ WebkitAppRegion: "drag", cursor: "move" }}
+        className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-3 py-2 text-white text-sm font-semibold"
+      >
         <span>Qorvex AI</span>
         <button
-          onClick={() => setIsMinimized(true)}
+          onClick={handleMinimize}
+          style={{ WebkitAppRegion: "no-drag" }}
           className="p-1 rounded hover:bg-black/20 transition-colors"
-          style={{ pointerEvents: "auto" }} // ✅ ensures clickable
         >
           <Minimize2 size={16} />
         </button>
@@ -196,6 +246,7 @@ export default function ScreenShare({ onStream }) {
             muted
             playsInline
             className="w-full h-full object-cover rounded-b-md"
+            style={{ display: "block" }}
           />
         )}
       </div>
