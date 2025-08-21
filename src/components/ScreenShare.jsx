@@ -243,96 +243,122 @@ const toggleWidgetSizeChange = useCallback(
     </button>
         :
     <div
-      style={{
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-      }}
-      className="rounded-xl shadow-2xl flex flex-col border border-gray-700 bg-[#121212]"
-    >
-      {/* Header */}
-      <div
-        style={{ WebkitAppRegion: "drag", cursor: "move" }}
-        className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-3 py-2 text-white text-sm font-semibold"
-      >
-        <span>Qorvex AI</span>
-        {/* <button
-          onClick={toggleWidgetSizeChange}
-          style={{ WebkitAppRegion: "no-drag" }}
-          className="p-1 rounded transition-colors"
-        >
-          <Minimize2 size={16} />
-        </button> */}
-      </div>
-
-      {/* Video */}
-      <div className="flex-1 bg-black">
-        {error ? (
-          <div className="text-red-500 p-2 text-sm">{error}</div>
-        ) : (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover rounded-b-md"
-            style={{ display: "block" }}
-          />
-        )}
-      </div>
-
-      {/* Chat */}
-<div className="flex flex-col bg-gray-900 p-3 overflow-hidden" style={{ height: "45%" }}>
-  {/* Messages list */}
-  <div className="flex-1 overflow-y-auto pr-1 mb-2 flex flex-col gap-2">
-    {messages.map((msg, idx) => (
-      <div
-        key={idx}
-        className={`px-3 py-2 rounded-lg max-w-[75%] text-sm shadow ${
-          msg.from === "user"
-            ? "bg-blue-600 text-white self-end"
-            : "bg-gray-700 text-white self-start"
-        }`}
-      >
-        {msg.text}
-      </div>
-    ))}
-    <div ref={messagesEndRef} />
+  style={{
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+  }}
+  className="rounded-xl shadow-2xl flex flex-col border border-gray-700 bg-[#121212]"
+>
+  {/* Header */}
+  <div
+    style={{ WebkitAppRegion: "drag", cursor: "move" }}
+    className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-purple-700 px-2 py-1 text-white font-semibold flex-shrink-0 text-xs"
+  >
+    <span className="">QorvexAI</span>
   </div>
 
-  {/* Input box */}
-  <textarea
-    ref={textareaRef}
-    value={input}
-    onChange={(e) => setInput(e.target.value)}
-    placeholder="Type a message..."
-    onKeyDown={(e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    }}
-    className="w-full px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm flex-shrink-0"
-    style={{ minHeight: "44px", maxHeight: "80px" }}
-  />
+  {/* Video */}
+  <div className="flex-1 bg-black min-h-0">
+    {error ? (
+      <div className="text-red-500 p-2 text-xs">{error}</div>
+    ) : (
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="w-full h-full object-cover"
+        style={{ display: "block" }}
+      />
+    )}
+  </div>
 
-  {/* Buttons */}
-  <div className="flex justify-between mt-2 gap-2 flex-shrink-0">
-    <button
-      onClick={setNewChat}
-      className="flex-1 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg py-1 text-xs transition-all"
+  <div 
+    className="flex flex-col bg-gray-900 flex-shrink-0" 
+    style={{ 
+      height: "45%",
+      minHeight: "120px",
+      maxHeight: "250px",
+      padding: "8px 0"
+    }}
+  >
+    {/* Messages list - Add horizontal padding only to this section */}
+    <div 
+      className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-0 mb-2 max-h-[75%] "
+      style={{ padding: "0 8px 0 6px" }}
     >
-      New Chat
-    </button>
-    <button
-      onClick={handleSend}
-      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg py-1 text-xs transition-all"
+      {messages.map((msg, idx) => (
+        <div
+          key={idx}
+          className={`px-2 py-1 rounded-lg  text-xs shadow ${
+            msg.from === "user"
+              ? "bg-blue-600 text-white self-end"
+              : "bg-gray-700 text-white self-start"
+          }`}
+          style={{ lineHeight: "1.3" }}
+        >
+          {msg.text}
+        </div>
+      ))}
+      <div ref={messagesEndRef} />
+    </div>
+
+    {/* Input and buttons - Add horizontal padding here */}
+    <div 
+      className="flex-shrink-0 flex justify-evenly items-center rounded-lg gap-2"
+      style={{ padding: "0 8px" }} // Only horizontal padding
     >
-      Send
-    </button>
+      {/* Input box - No additional padding/margin */}
+      <textarea
+        ref={textareaRef}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Type a message..."
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
+        className="w-full border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-xs"
+        style={{ 
+          minHeight: "28px",
+          maxHeight: "60px",
+          padding: "6px 8px",
+          margin: "0",
+          boxSizing: "border-box"
+        }}
+      />
+
+      {/* Buttons - No additional padding/margin */}
+      <div 
+        className="flex gap-2"
+      >
+        <button
+          onClick={setNewChat}
+          className="flex-1 bg-red-700 ring-red-700 hover:bg-red-800 text-white font-black rounded transition-all justify-center flex items-center"
+          style={{ 
+          minWidth: "0",
+          fontSize: "12px",
+          backgroundColor: "#e63946",
+          }}
+        >
+          New Chat
+        </button>
+        <button
+          onClick={handleSend}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black rounded transition-all justify-center flex items-center"
+          style={{ 
+            minWidth: "0",
+            fontSize: "14px",
+            backgroundColor: "black",
+          }}
+        >
+          Send
+        </button>
+      </div>
+    </div>
   </div>
 </div>
-
-    </div>
-  );
-}
+  )};
