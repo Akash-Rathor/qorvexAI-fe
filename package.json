@@ -1,7 +1,7 @@
 {
   "name": "ai-peer",
   "private": true,
-  "main": "main.cjs",
+  "main": "electron/main.cjs",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
