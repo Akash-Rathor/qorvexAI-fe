@@ -247,8 +247,9 @@ return (
   <div
     style={{
       width: "100%",
-      height: "78vh", // Fixed viewport height
-      overflow: "hidden", // Prevent scrolling
+      minHeight: "50vh",
+      maxHeight: "100vh",
+      overflow: "hidden",
       display: "flex",
       flexDirection: "column"
     }}
@@ -271,7 +272,7 @@ return (
     {/* Video - Fixed height */}
     <div 
       className="bg-black flex-shrink-0"
-      style={{ height: "30%" }}
+      style={{ height: "40%" }}
     >
       {error ? (
         <div className="text-red-500 p-2 text-xs">{error}</div>
@@ -290,9 +291,9 @@ return (
     <div 
       className="flex flex-col bg-gray-900"
       style={{ 
-        minHeight: "200px",
+        minHeight: "100px",
         maxHeight: "30%",
-        overflow: "hidden" // Prevent container overflow
+        // overflow: "hidden" // Prevent container overflow
       }}
     >
       {/* Messages - Scrollable area */}
